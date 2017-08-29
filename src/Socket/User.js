@@ -22,7 +22,7 @@ var User = function User(socket, pool) {
      *
      * @var int
      */
-    this._heartBeatTimer = 1000;//30000;
+    this._heartBeatTimer = 30000;
 
     /**
      * Boolean indicating if a connection is still alive or not

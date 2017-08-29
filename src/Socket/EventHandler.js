@@ -16,10 +16,6 @@ var EventHandler = function EventHandler() {
         console.log(msg);
     };
 
-    this.onClose = function() {
-
-    };
-
     this.onError = function(error) {
 
     };

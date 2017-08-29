@@ -37,9 +37,11 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
     /**
      * Constructor method for ZLXServer
      *
-     * @return void
+     * @return self
      */
     this.construct = function construct(HTTPS_credentials, _port) {
+        var self = this;
+
         let https_server = https.createServer(HTTPS_credentials, (req, res) => {
             res.writeHead(301, {'Location': 'https://zlx.com.br/'});
             res.end();
@@ -61,8 +63,20 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
 
         this.Server.on("connection", function connection(socket, upgradeReq) {
             socket._accessKey = upgradeReq.url.replace("/?_accessKey=", "");
-            let User = new UserSocket(socket, this.ConnectionPool);
-        }.bind(this));
+
+            var user_id = self.ConnectionPool.add(new UserSocket(socket, self.ConnectionPool));
+
+            // Handle a connection termination and free the memory
+            socket.on("close", function() {
+                let User = self.ConnectionPool.get(user_id);
+
+                if(User) {
+                    return User.handleTermination();
+                }
+            });
+        });
+
+        return this;
     };
 
     // Returns the constructor method

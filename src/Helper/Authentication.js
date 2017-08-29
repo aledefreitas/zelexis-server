@@ -22,13 +22,15 @@
  */
 var Authentication = function Authentication(handshake, accept) {
     try {
+        // Checks to see if the url has the right pattern
         if(!handshake.req.url.match(/\?\_accessKey\=(\w{5})/gi))
             throw new Error("Invalid access key");
 
         //TODO: Fazer autenticação complexa utilizando o host, origin para fazer uma real autenticação do domínio do cliente
         //TODO: Utilizar gearman para acesso multithread ao banco de dados para realizar checagens de pares de chave de acesso + domain do cliente
         //TODO: Enviar chave de acesso do cliente junto dos headers de conexão do servidor de WebSocket
-        console.log(handshake.req.url);
+//        console.log(handshake.req.url);
+
         return accept(true);
     } catch(e) {
         console.log(e);

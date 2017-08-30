@@ -12,7 +12,7 @@
  */
 
 // Load dependencies
-var SocketEventHandler = require("./EventHandler.js");
+var SocketEventHandler = require("./SocketEventHandler.js");
 var crypto = require("crypto");
 
 var User = function User(socket, pool) {
@@ -82,6 +82,7 @@ var User = function User(socket, pool) {
         this.ConnectionPool = pool;
         this.EventHandler = new SocketEventHandler();
         this._room = socket._accessKey;
+        this._uri = socket._uri;
 
         // Makes this socket join the room for its accessKey
         this.ConnectionPool.join(this._room, this);
@@ -91,6 +92,10 @@ var User = function User(socket, pool) {
         this.Socket.on("error", this.EventHandler.onError.bind(this));
 
         this._startHeartbeat();
+
+        this.broadcast("teste", function(results) {
+            console.log(results);
+        });
 
         return this;
     };
@@ -115,7 +120,6 @@ var User = function User(socket, pool) {
      */
     this.heartbeat = function() {
         if(this._isAlive === false) {
-            console.log("Connection died");
             return this.Socket.terminate();
         }
 
@@ -179,7 +183,7 @@ var User = function User(socket, pool) {
         var broadcastPromises = [];
 
         // Iterates the room to get users Map
-        this.ConnectionPool.in(this._room).forEach(function(user_id) {
+        this.ConnectionPool.in(this._room, this._uri).forEach(function(user_id) {
             // If the user iterating has the same id as this, we skip it
             if(user_id == self.id) {
                 return;

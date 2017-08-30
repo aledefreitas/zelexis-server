@@ -11,7 +11,7 @@
  * @since       0.0.1
  */
 
-var EventHandler = function EventHandler() {
+var SocketEventHandler = function SocketEventHandler() {
     this.onMessage = function(msg) {
         console.log(msg);
     };
@@ -21,4 +21,4 @@ var EventHandler = function EventHandler() {
     };
 };
 
-module.exports = EventHandler;
+module.exports = SocketEventHandler;

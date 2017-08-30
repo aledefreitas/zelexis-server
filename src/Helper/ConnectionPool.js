@@ -61,16 +61,29 @@ var ConnectionPool = function ConnectionPool() {
      */
     this.join = function(room, user) {
         // If the user object doesn't have any rooms in it, create a Set for it
-        user._joinedRooms = user._joinedRooms || new Set();
+        user._joinedRooms = user._joinedRooms || new Map();
 
         // If there are no rooms with this name available, create it
         if(!this._rooms.get(room))
-            this._rooms.set(room, new Set());
+            this._rooms.set(room, new Map());
 
-        // If the user isn't inside the room yet, we make him join it
-        if(!this._rooms.get(room).has(user.id)) {
-            this._rooms.get(room).add(user.id);
-            user._joinedRooms.add(room);
+        let _roomObject = this._rooms.get(room);
+
+        // If the requested URI doesn't exist inside the room, create it
+        if(!_roomObject.get(user._uri))
+            _roomObject.set(user._uri, new Set());
+
+        let _uriRoom = _roomObject.get(user._uri);
+
+        // If the user isn't inside the room for his required URI yet, we make him join it
+        if(!_uriRoom.has(user.id)) {
+            _uriRoom.add(user.id);
+
+            if(!user._joinedRooms.has(room)) {
+                user._joinedRooms.set(room, new Set());
+            }
+
+            user._joinedRooms.get(room).add(user._uri);
         }
 
         // If the user's connection hasn't been added to the connection pool yet, we add it
@@ -90,32 +103,51 @@ var ConnectionPool = function ConnectionPool() {
         let user = this._connections[user_id];
 
         // If the user didn't join any rooms or did not join this room, return immediately
-        if(!user._joinedRooms || !user._joinedRooms.has(room))
+        if(!user._joinedRooms || !user._joinedRooms.has(room)) {
             return;
-
-        let _roomEntries = this._rooms.get(room);
-
-        if(_roomEntries) {
-            _roomEntries.delete(user_id);
         }
 
-        if(this._rooms.get(room).size == 0)
+        var _roomEntries = this._rooms.get(room);
+
+        if(_roomEntries) {
+            // Check for all the uris this user is connected to in this room
+            user._joinedRooms.get(room).forEach(function(_uri) {
+                let _uriRoomEntries = _roomEntries.get(_uri);
+
+                if(_uriRoomEntries.has(user_id)) {
+                    _uriRoomEntries.delete(user_id);
+                }
+
+                if(_uriRoomEntries.size == 0) {
+                    _roomEntries.delete(_uri);
+                }
+            });
+
+            user._joinedRooms.delete(room);
+        }
+
+        if(this._rooms.get(room).size == 0) {
             this._rooms.delete(room);
+        }
     };
 
     /**
      * Returns the Map of users inside a room
      *
      * @param   string      room        Room to search for users
+     * @param   string      uri         URI room to search for users
      *
      * @return  Set
      */
-    this.in = function(room) {
-        // If the room doesn't exist, return an empty Map
+    this.in = function(room, uri) {
+        // If the room doesn't exist, return an empty Set
         if(!this._rooms.get(room))
             return new Set();
 
-        return this._rooms.get(room);
+        if(!this._rooms.get(room).get(uri))
+            return new Set();
+
+        return this._rooms.get(room).get(uri);
     };
 
     /**

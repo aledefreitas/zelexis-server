@@ -13,7 +13,7 @@
 
 // Load dependencies
 var SocketEventHandler = require("./SocketEventHandler.js");
-var crypto = require("crypto");
+var uuidv4 = require("uuid/v4");
 
 var User = function User(socket, pool) {
     /**
@@ -76,7 +76,7 @@ var User = function User(socket, pool) {
      */
     this.constructor = function(socket, pool) {
         // Creates a random id for this socket connection, 16 characters long
-        this.id = crypto.randomBytes(8).toString('hex');
+        this.id = uuidv4();
 
         this.Socket = socket;
         this.ConnectionPool = pool;
@@ -91,11 +91,12 @@ var User = function User(socket, pool) {
         this.Socket.on("message", this.EventHandler.onMessage.bind(this));
         this.Socket.on("error", this.EventHandler.onError.bind(this));
 
-        this._startHeartbeat();
-
-        this.broadcast("teste", function(results) {
-            console.log(results);
+        this.send({
+            'req': 'identity',
+            'id': this.id
         });
+        
+        this._startHeartbeat();
 
         return this;
     };
@@ -120,13 +121,22 @@ var User = function User(socket, pool) {
      */
     this.heartbeat = function() {
         if(this._isAlive === false) {
-            return this.Socket.terminate();
+            return this.terminate();
         }
 
         this._isAlive = false;
         this.Socket.ping("", false, true);
 
         return true;
+    };
+
+    /**
+     * Terminates this Socket Connection
+     *
+     * @return void
+     */
+    this.terminate = function() {
+        return this.Socket.terminate();
     };
 
     /**
@@ -150,13 +160,20 @@ var User = function User(socket, pool) {
      * @return Socket.send
      */
     this.send = function(data, options, callback) {
-        // If options is not set, and instead it received a callback, set it as the callback
-        if(typeof options === "function") {
-            callback = options;
-            options = null;
-        }
+        try {
+            data = JSON.stringify(data);
 
-        return this.Socket.send(data, options, callback);
+            // If options is not set, and instead it received a callback, set it as the callback
+            if(typeof options === "function") {
+                callback = options;
+                options = null;
+            }
+
+            return this.Socket.send(Buffer.from(data), options, callback);
+        } catch (e) {
+            console.log(e);
+            return;
+        }
     };
 
     /**
@@ -182,35 +199,41 @@ var User = function User(socket, pool) {
         var self = this;
         var broadcastPromises = [];
 
-        // Iterates the room to get users Map
-        this.ConnectionPool.in(this._room, this._uri).forEach(function(user_id) {
-            // If the user iterating has the same id as this, we skip it
-            if(user_id == self.id) {
-                return;
-            }
+        try {
+            data = JSON.stringify(data);
 
-            // Then we add its Socket.send() to our promises array, so we can return all results after all sends are done
-            broadcastPromises.push(
-                new Promise(function(resolve) {
-                    let _user = self.ConnectionPool.get(user_id);
+            // Iterates the room to get users Map
+            this.ConnectionPool.in(this._room, this._uri).forEach(function(user_id) {
+                // If the user iterating has the same id as this, we skip it
+                if(user_id == self.id) {
+                    return;
+                }
 
-                    // If the user's socket doesn't exist anymore, we resolve the promise to false
-                    if(!_user.Socket) {
-                        resolve(false);
-                    }
+                // Then we add its Socket.send() to our promises array, so we can return all results after all sends are done
+                broadcastPromises.push(
+                    new Promise(function(resolve) {
+                        let _user = self.ConnectionPool.get(user_id);
 
-                    _user.Socket.send(data, options, function(error) {
-                        // If there are no errors, we resolve the promise to true
-                        if(!error) {
-                            resolve(true);
+                        // If the user's socket doesn't exist anymore, we resolve the promise to false
+                        if(!_user.Socket) {
+                            resolve(false);
                         }
 
-                        // Otherwise, we resolve it to its error
-                        resolve(error);
-                    });
-                })
-            );
-        });
+                        _user.Socket.send(Buffer.from(data), options, function(error) {
+                            // If there are no errors, we resolve the promise to true
+                            if(!error) {
+                                resolve(true);
+                            }
+
+                            // Otherwise, we resolve it to its error
+                            resolve(error);
+                        });
+                    })
+                );
+            });
+        } catch(e) {
+            console.log(e);
+        }
 
         return Promise.all(broadcastPromises).then(function(results) {
             return callback(results);

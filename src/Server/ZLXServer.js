@@ -63,9 +63,9 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
 
         this.Server.on("connection", function connection(socket, upgradeReq) {
             // Filters the accessToken from the connection requested URL
-            socket._accessKey = /\/\?accessToken\=(\w{5})\&/gi.exec(upgradeReq.url)[1];
+            socket._accessKey = upgradeReq.headers['sec-websocket-protocol'];
             // Filters the URI to validate it's valid Encoded URI, removes index.ext or default.ext and removes trailing bars
-            socket._uri = /\&p\=([a-z\.\,\/\?\:\@\&\=\+\$\#\%]+)/gi.exec(upgradeReq.url)[1].replace(/(index|default)\.(\w{2,4})/gi, "").replace(/\/+$/, "");
+            socket._uri = /\?p\=([a-z\.\,\/\?\:\@\&\=\+\$\#\%]+)/gi.exec(upgradeReq.url)[1].replace(/(index|default)\.(\w{2,4})/gi, "").replace(/\/+$/, "");
 
             var user_id = self.ConnectionPool.add(new UserSocket(socket, self.ConnectionPool));
 

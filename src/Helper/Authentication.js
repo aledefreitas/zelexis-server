@@ -22,9 +22,13 @@
  */
 var Authentication = function Authentication(handshake, accept) {
     try {
-        // Checks to see if the url has the right pattern
-        if(!handshake.req.url.match(/(\?|\&)accessToken\=(\w{5})\&?/gi))
+        // Checks for the access key to have the right length
+        if(handshake.req.headers['sec-websocket-protocol'].length !== 5)
             throw new Error("Invalid access key");
+
+        // Checks to see if the url has the right pattern
+        if(!handshake.req.url.match(/\?p\=([a-z\.\,\/\?\:\@\&\=\+\$\#\%]+)/gi))
+            throw new Error("Invalid path");
 
         //TODO: Fazer autenticação complexa utilizando o host, origin para fazer uma real autenticação do domínio do cliente
         //TODO: Utilizar gearman para acesso multithread ao banco de dados para realizar checagens de pares de chave de acesso + domain do cliente

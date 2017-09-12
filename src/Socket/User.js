@@ -95,7 +95,7 @@ var User = function User(socket, pool) {
             'req': 'identity',
             'id': this.id
         });
-        
+
         this._startHeartbeat();
 
         return this;
@@ -145,6 +145,11 @@ var User = function User(socket, pool) {
      * @return void
      */
     this.handleTermination = function() {
+        this.broadcast({
+            "from": this.id,
+            "req": "pair_disconnected"
+        });
+
         clearInterval(this._heartBeatInterval);
         this.ConnectionPool.leave(this._room, this.id)
         this.ConnectionPool.delete(this.id);

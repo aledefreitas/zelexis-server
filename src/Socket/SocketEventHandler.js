@@ -23,7 +23,7 @@ var SocketEventHandler = function SocketEventHandler() {
      */
     this.onMessage = function(msg) {
         try {
-            let data = JSON.parse(msg);
+            let data = JSON.parse(msg.toString('utf8'));
 
             switch(data.req) {
                 case 'request_pairs':
@@ -81,7 +81,13 @@ var SocketEventHandler = function SocketEventHandler() {
      * @return void
      */
     this._offerPair = function(data) {
-        this.ConnectionPool.get(data.to).send({
+        var User = this.ConnectionPool.get(data.to);
+
+        if(!User) {
+            return false;
+        }
+
+        User.send({
             'from': this.id,
             'req': 'pair_offer',
             'sdp': data.sdp
@@ -96,7 +102,13 @@ var SocketEventHandler = function SocketEventHandler() {
      * @return void
      */
     this._answerPair = function(data) {
-        this.ConnectionPool.get(data.to).send({
+        var User = this.ConnectionPool.get(data.to);
+
+        if(!User) {
+            return false;
+        }
+
+        User.send({
             'from': this.id,
             'req': 'pair_answer',
             'sdp': data.sdp
@@ -104,7 +116,13 @@ var SocketEventHandler = function SocketEventHandler() {
     };
 
     this._candidatePair = function(data) {
-        this.ConnectionPool.get(data.to).send({
+        var User = this.ConnectionPool.get(data.to);
+
+        if(!User) {
+            return false;
+        }
+
+        User.send({
             'from': this.id,
             'req': 'pair_candidate',
             'candidate': data.candidate

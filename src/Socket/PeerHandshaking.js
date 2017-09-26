@@ -83,7 +83,7 @@ var PeerHandshaking = function PeerHandshaking() {
         this.send({
             'req': 'request_pairs',
             'swarm': _filePath,
-            'size': this.ConnectionPool.getSwarmSize(swarm, this._domain)
+            'size': this.ConnectionPool.getSwarmSize(this._domain, _filePath)
         });
 
         // Then we broadcast to everyone inside the swarm that we are available to pairing

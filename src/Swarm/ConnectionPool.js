@@ -108,6 +108,23 @@ var ConnectionPool = function ConnectionPool() {
     };
 
     /**
+     * Returns the size for a swarm inside the domain
+     *
+     * @param   string      domain          Domain
+     * @param   string      swarm           Swarm to check
+     *
+     * @return int
+     */
+    this.getSwarmSize = function(domain, swarm) {
+        let swarmSet = this.in(domain, swarm);
+
+        if(!swarmSet)
+            return 0;
+
+        return swarmSet.size - 1 > 0 ? swarmSet.size - 1 : 0;
+    };
+
+    /**
      * Returns the Set of users inside a swarm
      *
      * @param   string      domain      Domain to search for swarms

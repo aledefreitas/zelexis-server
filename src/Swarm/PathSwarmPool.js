@@ -30,6 +30,17 @@ var PathSwarmPool = function PathSwarmPool() {
     };
 
     /**
+     * Returns a specific swarm
+     *
+     * @param   string      swarm       Swarm to check
+     *
+     * @return Set
+     */
+    this.get = function(swarm) {
+        return this._swarms.get(swarm);
+    }
+
+    /**
      * Makes a user join a swarm
      *
      * @param   string          swarm       Swarm to join
@@ -48,7 +59,7 @@ var PathSwarmPool = function PathSwarmPool() {
         let swarmSet = this._swarms.get(swarm);
 
         // If the user isn't already inside the swarm, add him
-        if(!swarmSet.get(user.id)) {
+        if(!swarmSet.has(user.id)) {
             swarmSet.add(user.id);
             user._swarms.add(swarm);
         }
@@ -91,8 +102,7 @@ var PathSwarmPool = function PathSwarmPool() {
     Object.defineProperty(this, "size", {
         get: function() {
             return this._getSize();
-        },
-        writable: false
+        }
     });
 
     return this.constructor();

@@ -1,5 +1,5 @@
 /**
- * ZLX P2P CDN
+ * ZELEXIS CDN
  *
  * Node.JS Server
  *
@@ -11,7 +11,9 @@
  * @since       0.0.1
  */
 
-var SocketEventHandler = function SocketEventHandler() {
+var PathParser = require("../Helper/PathParser.js");
+
+var PeerHandshaking = function PeerHandshaking() {
     var self = this;
 
     /**
@@ -27,7 +29,7 @@ var SocketEventHandler = function SocketEventHandler() {
 
             switch(data.req) {
                 case 'request_pairs':
-                    return self._requestPairs.call(this);
+                    return self._requestPairs.call(this, data);
                 break;
 
                 case 'offer_pair':
@@ -61,16 +63,34 @@ var SocketEventHandler = function SocketEventHandler() {
     };
 
     /**
-     * Sends a Broadcast message requesting to pair with someone
+     * Requests pairs for a given file
+     *
+     * @param   object      data        Request data
      *
      * @return void
      */
-    this._requestPairs = function() {
-        // Here the context is Socket\User, so we're calling the broadcast method from the User's class
+    this._requestPairs = function(data) {
+        // If the request doesn't specify a filePath, we return immediately
+        if(!data.filePath)
+            return;
+
+        let _filePath = PathParser.parse(data.filePath);
+
+        // Joins the swarm for the given file
+        this.ConnectionPool.join(_filePath, this);
+
+        // Sends a message to the user with the current swarm size for the specified file
+        this.send({
+            'req': 'request_pairs',
+            'swarm': _filePath,
+            'size': this.ConnectionPool.getSwarmSize(swarm, this._domain)
+        });
+
+        // Then we broadcast to everyone inside the swarm that we are available to pairing
         this.broadcast({
             'from': this.id,
             'req': 'pair_found'
-        });
+        }, _filePath);
     };
 
     /**
@@ -130,4 +150,4 @@ var SocketEventHandler = function SocketEventHandler() {
     };
 };
 
-module.exports = SocketEventHandler;
+module.exports = PeerHandshaking;

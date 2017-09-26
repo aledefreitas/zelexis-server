@@ -1,5 +1,5 @@
 /**
- * ZLX P2P CDN
+ * ZELEXIS CDN
  *
  * Node.JS Server
  *
@@ -12,7 +12,7 @@
  */
 
 // Load dependencies
-var SocketEventHandler = require("./SocketEventHandler.js");
+var PeerHandshaking = require("./PeerHandshaking.js");
 var uuidv4 = require("uuid/v4");
 
 var User = function User(socket, pool) {
@@ -46,11 +46,11 @@ var User = function User(socket, pool) {
     this.ConnectionPool = null;
 
     /**
-     * Instance for socket's EventHandler
+     * Instance for socket's PeerHandshaking
      *
-     * @var Socket\EventHandler
+     * @var Socket\PeerHandshaking
      */
-    this.EventHandler = null;
+    this.PeerHandshaking = null;
 
     /**
      * Instance for WebSocket
@@ -60,11 +60,18 @@ var User = function User(socket, pool) {
     this.Socket = null;
 
     /**
-     * Room on which this socket will be connected to
+     * Domain on which this socket will be connected to
      *
      * @var string
      */
-    this._room = "";
+    this._domain = "";
+
+    /**
+     * Swarms on which this socket is added to
+     *
+     * @var Set
+     */
+    this._swarms = new Set();
 
     /**
      * Constructor Method for a User's Socket
@@ -80,17 +87,18 @@ var User = function User(socket, pool) {
 
         this.Socket = socket;
         this.ConnectionPool = pool;
-        this.EventHandler = new SocketEventHandler();
-        this._room = socket._accessKey;
-        this._uri = socket._uri;
+        this.PeerHandshaking = new PeerHandshaking();
 
-        // Makes this socket join the room for its accessKey
-        this.ConnectionPool.join(this._room, this);
+        this._domain = socket._accessKey;
 
-        // Binds this object so we can access its methods from within the EventHandler, which is created mostly for better organization and semantics
-        this.Socket.on("message", this.EventHandler.onMessage.bind(this));
-        this.Socket.on("error", this.EventHandler.onError.bind(this));
+        // Binds this object so we can access its methods from within the PeerHandshaking, which is created mostly for better organization and semantics
+        this.Socket.on("message", this.PeerHandshaking.onMessage.bind(this)); // TODO: Transformar em um dispatcher de eventos
+        this.Socket.on("error", this.PeerHandshaking.onError.bind(this)); // TODO: Transformar em um dispatcher de eventos
 
+        // Adds the user to active connections within the server
+        this.ConnectionPool.add(this);
+
+        // Sends the identity to the peer
         this.send({
             'req': 'identity',
             'id': this.id
@@ -125,7 +133,7 @@ var User = function User(socket, pool) {
         }
 
         this._isAlive = false;
-        this.Socket.ping("", false, true);
+        this.Socket.ping(1, false, true);
 
         return true;
     };
@@ -151,7 +159,12 @@ var User = function User(socket, pool) {
         });
 
         clearInterval(this._heartBeatInterval);
-        this.ConnectionPool.leave(this._room, this.id)
+
+        // Iterates all swarms on which the user is active right now, and leaves them
+        this._swarms.forEach(function(swarm) {
+            this.ConnectionPool.leave(swarm, this.id);
+        }.bind(this));
+        
         this.ConnectionPool.delete(this.id);
     };
 
@@ -185,6 +198,7 @@ var User = function User(socket, pool) {
      * Broadcasts a message to all sockets within the same room
      *
      * @param   any         data        The data to send
+     * @param   mixed       swarm       The Swarm(s) to broadcast to, broadcasts to all if null
      * @param   Object      options     Options for the Socket.send()
      * @param   Function    callback    Callback for Socket.send(), receives a parameter containing the array of promise resolutions
      *
@@ -192,7 +206,7 @@ var User = function User(socket, pool) {
      *
      * @return  Promise
      */
-    this.broadcast = function(data, options, callback) {
+    this.broadcast = function(data, swarm, options, callback) {
         // If options is not set, and instead it received a callback, set it as the callback
         if(typeof options === "function") {
             callback = options;
@@ -205,37 +219,44 @@ var User = function User(socket, pool) {
         var broadcastPromises = [];
 
         try {
-            data = JSON.stringify(data);
+            if(swarm == null) {
+                // Iterates all the swarms on which the user is on, and broadcasts there
+                this._swarms.forEach(function(swarm, key, set) {
+                    broadcastPromises.push(this.broadcast(data, swarm, options, callback));
+                }.bind(this));
+            } else {
+                data = JSON.stringify(data);
 
-            // Iterates the room to get users Map
-            this.ConnectionPool.in(this._room, this._uri).forEach(function(user_id) {
-                // If the user iterating has the same id as this, we skip it
-                if(user_id == self.id) {
-                    return;
-                }
+                // Iterates the swarm
+                this.ConnectionPool.in(this._domain, swarm).forEach(function(user_id) {
+                    // If the user iterating has the same id as this, we skip it
+                    if(user_id == self.id) {
+                        return;
+                    }
 
-                // Then we add its Socket.send() to our promises array, so we can return all results after all sends are done
-                broadcastPromises.push(
-                    new Promise(function(resolve) {
-                        let _user = self.ConnectionPool.get(user_id);
+                    // Then we add its Socket.send() to our promises array, so we can return all results after all sends are done
+                    broadcastPromises.push(
+                        new Promise(function(resolve) {
+                            let _user = self.ConnectionPool.get(user_id);
 
-                        // If the user's socket doesn't exist anymore, we resolve the promise to false
-                        if(!_user.Socket) {
-                            resolve(false);
-                        }
-
-                        _user.Socket.send(Buffer.from(data), options, function(error) {
-                            // If there are no errors, we resolve the promise to true
-                            if(!error) {
-                                resolve(true);
+                            // If the user's socket doesn't exist anymore, we resolve the promise to false
+                            if(!_user.Socket) {
+                                resolve(false);
                             }
 
-                            // Otherwise, we resolve it to its error
-                            resolve(error);
-                        });
-                    })
-                );
-            });
+                            _user.Socket.send(Buffer.from(data), options, function(error) {
+                                // If there are no errors, we resolve the promise to true
+                                if(!error) {
+                                    resolve(true);
+                                }
+
+                                // Otherwise, we resolve it to its error
+                                resolve(error);
+                            });
+                        })
+                    );
+                });
+            }
         } catch(e) {
             console.log(e);
         }

@@ -1,5 +1,5 @@
 /**
- * ZLX P2P CDN
+ * ZELEXIS CDN
  *
  * Node.JS Server
  *
@@ -16,7 +16,7 @@ var WebSocket = require("ws");
 var https = require("https");
 var Authentication = require("../Helper/Authentication.js");
 var UserSocket = require("../Socket/User.js");
-var ConnectionPool = require("../Helper/ConnectionPool.js");
+var ConnectionPool = require("../Swarm/ConnectionPool.js");
 
 let ZLXServer = function(HTTPS_credentials, PORT) {
     /**
@@ -43,7 +43,7 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
         var self = this;
 
         let https_server = https.createServer(HTTPS_credentials, (req, res) => {
-            res.writeHead(301, {'Location': 'https://zlx.com.br/'});
+            res.writeHead(301, { 'Location': 'https://zelexis.com/' });
             res.end();
         });
 
@@ -58,14 +58,12 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
 
         https_server.listen(_port);
 
-        console.log("[ZLX P2P CDN Server]");
+        console.log("[ZELEXIS CDN Server]");
         console.log("Server open and listening on port " + _port);
 
         this.Server.on("connection", function connection(socket, upgradeReq) {
             // Filters the accessToken from the connection requested URL
             socket._accessKey = upgradeReq.headers['sec-websocket-protocol'];
-            // Filters the URI to validate it's valid Encoded URI, removes index.ext or default.ext and removes trailing bars
-            socket._uri = /\?p\=([a-z\.\,\/\?\:\@\&\=\+\$\#\%]+)/gi.exec(upgradeReq.url)[1].replace(/(index|default)\.(\w{2,4})/gi, "").replace(/\/+$/, "");
 
             var user_id = self.ConnectionPool.add(new UserSocket(socket, self.ConnectionPool));
 

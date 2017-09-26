@@ -11,9 +11,6 @@
  * @since       0.0.1
  */
  try {
-     // Load dependencies
-     var fs = require("fs");
-
      /**
       * ZLXServer Class
       *
@@ -35,11 +32,7 @@
       *
       * @const Object
       */
-     const HTTPS_credentials = {
-         "key": fs.readFileSync(process.argv[2]),
-         "cert": fs.readFileSync(process.argv[3]),
-         "passphrase": process.argv[4] || null
-     };
+     const HTTPS_credentials = require('./ssl-credentials.js');
 
      /**
       * Constant with the port on which the server will listen to
@@ -53,6 +46,6 @@
      // Starts the server, listening to the given port
      return new ZLXServer(HTTPS_credentials, PORT);
  } catch(e) {
-     console.log("[ZLX-P2P-CDN-SERVER] Exited with Fatal Error: " + e);
+     console.log("[ZELEXIS SERVER] Exited with Fatal Error: " + e);
      console.log(e.stack);
  }

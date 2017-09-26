@@ -1,2 +1,2 @@
-# zlx-p2p-cdn-server
+# ZELEXIS-SERVER
 Servidor para direcionar conexões p2p para a CDN P2P da ZLX

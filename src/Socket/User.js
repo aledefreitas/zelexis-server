@@ -164,7 +164,7 @@ var User = function User(socket, pool) {
         this._swarms.forEach(function(swarm) {
             this.ConnectionPool.leave(swarm, this.id);
         }.bind(this));
-        
+
         this.ConnectionPool.delete(this.id);
     };
 

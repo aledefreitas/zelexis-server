@@ -11,7 +11,7 @@
  * @since       0.0.1
  */
 
-var PathSwarmPool = require("./PathSwarmPool.js");
+var SwarmPool = require("./SwarmPool.js");
 
 var ConnectionPool = function ConnectionPool() {
     /**
@@ -67,7 +67,7 @@ var ConnectionPool = function ConnectionPool() {
             this._connections[user.id] = user;
 
         if(!this._domains.get(user._domain))
-            this._domains.set(user._domain, new PathSwarmPool());
+            this._domains.set(user._domain, new SwarmPool());
 
         let _swarms = this._domains.get(user._domain);
 
@@ -141,7 +141,7 @@ var ConnectionPool = function ConnectionPool() {
 
         let _swarmSet = _swarms.get(swarm);
 
-        return _swarmSet ? _swarmSet : new Set();
+        return _swarmSet ? _swarmSet.getPeers() : new Set();
     };
 
     /**

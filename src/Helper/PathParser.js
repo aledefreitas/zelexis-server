@@ -13,6 +13,13 @@
 
 var exports = module.exports = {};
 
+/**
+ * Parses a path removing query strings and hashes
+ *
+ * @param   string      path
+ *
+ * @return string
+ */
 exports.parse = function(path) {
-    return path.replace(/\?(.*)/, "");
+    return path.replace(/\?(.*)/, "").replace(/\#(.*)/, "");
 };

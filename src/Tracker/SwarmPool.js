@@ -11,7 +11,9 @@
  * @since       0.0.1
  */
 
-var PathSwarmPool = function PathSwarmPool() {
+var Swarm = require("./Swarm.js");
+
+var SwarmPool = function SwarmPool() {
     /**
      * Variable containing all swarms for this Pool
      *
@@ -20,7 +22,7 @@ var PathSwarmPool = function PathSwarmPool() {
     this._swarms = null;
 
     /**
-     * Constructor for the PathSwarmPool
+     * Constructor for the SwarmPool
      * Instantiates a Map for its swarms object
      *
      * @return void
@@ -53,14 +55,14 @@ var PathSwarmPool = function PathSwarmPool() {
         user._swarms = user._swarms || new Set();
 
         // If there are no swarms with this name available, create it
-        if(!this._swarms.get(swarm))
-            this._swarms.set(swarm, new Set());
+        if(!this._swarms.has(swarm))
+            this._swarms.set(swarm, new Swarm());
 
         let swarmSet = this._swarms.get(swarm);
 
         // If the user isn't already inside the swarm, add him
         if(!swarmSet.has(user.id)) {
-            swarmSet.add(user.id);
+            swarmSet.join(user.id);
             user._swarms.add(swarm);
         }
     };
@@ -76,7 +78,7 @@ var PathSwarmPool = function PathSwarmPool() {
     this.leave = function(swarm, user_id) {
         let swarmSet = this._swarms.get(swarm);
 
-        if(swarmSet && swarmSet.delete(user_id)) {
+        if(swarmSet && swarmSet.leave(user_id)) {
             if(swarmSet.size == 0) {
                 this._swarms.delete(swarm);
             }
@@ -97,7 +99,7 @@ var PathSwarmPool = function PathSwarmPool() {
     }
 
     /**
-     * Defines the property size for PathSwarmPool instances, which calls _getSize() as its value
+     * Defines the property size for SwarmPool instances, which calls _getSize() as its value
      */
     Object.defineProperty(this, "size", {
         get: function() {
@@ -108,4 +110,4 @@ var PathSwarmPool = function PathSwarmPool() {
     return this.constructor();
 };
 
-module.exports = PathSwarmPool;
+module.exports = SwarmPool;

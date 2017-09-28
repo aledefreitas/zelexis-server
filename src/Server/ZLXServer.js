@@ -16,7 +16,7 @@ var WebSocket = require("ws");
 var https = require("https");
 var Authentication = require("../Helper/Authentication.js");
 var UserSocket = require("../Socket/User.js");
-var ConnectionPool = require("../Swarm/ConnectionPool.js");
+var ConnectionPool = require("../Tracker/ConnectionPool.js");
 
 let ZLXServer = function(HTTPS_credentials, PORT) {
     /**
@@ -72,8 +72,10 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
                 let User = self.ConnectionPool.get(user_id);
 
                 if(User) {
-                    return User.handleTermination();
+                    User.handleTermination();
                 }
+
+                return true;
             });
         });
 

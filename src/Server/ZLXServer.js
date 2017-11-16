@@ -18,13 +18,23 @@ var Authentication = require("../Helper/Authentication.js");
 var UserSocket = require("../Socket/User.js");
 var ConnectionPool = require("../Tracker/ConnectionPool.js");
 
+/**
+ * Constructor method for ZLXServer
+ *
+ * @return void
+ */
 let ZLXServer = function(HTTPS_credentials, PORT) {
+    var self = this;
+
     /**
      * Server instance, null on startup
      *
      * @var WebSocket.Server
      */
-    this.Server = null;
+    this.Server = new WebSocket.Server({
+        "server": https_server,
+        "verifyClient": Authentication
+    });
 
     /**
      * Instance of ConnectionPool
@@ -32,58 +42,38 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
      *
      * @var Helper\ConnectionPool
      */
-    this.ConnectionPool = null;
+    this.ConnectionPool = new ConnectionPool();
 
     /**
-     * Constructor method for ZLXServer
-     *
-     * @return self
+     * Creates the HTTPS server on which to listen to
      */
-    this.construct = function construct(HTTPS_credentials, _port) {
-        var self = this;
+    let https_server = https.createServer(HTTPS_credentials, (req, res) => {
+        res.writeHead(301, { 'Location': 'https://zelexis.com/' });
+        res.end();
+    });
 
-        let https_server = https.createServer(HTTPS_credentials, (req, res) => {
-            res.writeHead(301, { 'Location': 'https://zelexis.com/' });
-            res.end();
+    https_server.listen(_port);
+
+    console.log("[ZELEXIS CDN Server]");
+    console.log("Server open and listening on port " + _port);
+
+    this.Server.on("connection", function connection(socket, upgradeReq) {
+        // Filters the accessToken from the connection requested URL
+        socket._accessKey = upgradeReq.headers['sec-websocket-protocol'];
+
+        var user_id = self.ConnectionPool.add(new UserSocket(socket, self.ConnectionPool));
+
+        // Handle a connection termination and free the memory
+        socket.on("close", function() {
+            let User = self.ConnectionPool.get(user_id);
+
+            if(User) {
+                User.handleTermination();
+            }
+
+            return true;
         });
-
-        let WS_Server = WebSocket.Server;
-
-        this.Server = new WS_Server({
-            "server": https_server,
-            "verifyClient": Authentication
-        });
-
-        this.ConnectionPool = new ConnectionPool();
-
-        https_server.listen(_port);
-
-        console.log("[ZELEXIS CDN Server]");
-        console.log("Server open and listening on port " + _port);
-
-        this.Server.on("connection", function connection(socket, upgradeReq) {
-            // Filters the accessToken from the connection requested URL
-            socket._accessKey = upgradeReq.headers['sec-websocket-protocol'];
-
-            var user_id = self.ConnectionPool.add(new UserSocket(socket, self.ConnectionPool));
-
-            // Handle a connection termination and free the memory
-            socket.on("close", function() {
-                let User = self.ConnectionPool.get(user_id);
-
-                if(User) {
-                    User.handleTermination();
-                }
-
-                return true;
-            });
-        });
-
-        return this;
-    };
-
-    // Returns the constructor method
-    return this.construct(HTTPS_credentials, PORT);
+    });
 }
 
 module.exports = ZLXServer;

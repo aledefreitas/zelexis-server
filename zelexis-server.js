@@ -44,7 +44,7 @@
      const PORT = 8443;
 
      // Starts the server, listening to the given port
-     return new ZLXServer(HTTPS_credentials, PORT);
+     new ZLXServer(HTTPS_credentials, PORT);
  } catch(e) {
      console.log("[ZELEXIS SERVER] Exited with Fatal Error: " + e);
      console.log(e.stack);

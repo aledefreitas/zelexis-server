@@ -13,141 +13,153 @@
 
 var PathParser = require("../Helper/PathParser.js");
 
+/**
+ * PeerHandshaking constructor
+ *
+ * @return void
+ */
 var PeerHandshaking = function PeerHandshaking() {
-    var self = this;
 
-    /**
-     * Handles a new message from the Socket Connection, and routes it to the correspondent function
-     *
-     * @context Socket\User
-     *
-     * @return void
-     */
-    this.onMessage = function(msg) {
-        try {
-            let data = JSON.parse(msg.toString('utf8'));
+};
 
-            switch(data.req) {
-                case 'request_pairs':
-                    return self._requestPairs.call(this, data);
-                break;
+/**
+ * Handles a new message from the Socket Connection, and routes it to the correspondent function
+ *
+ * @context Socket\User
+ *
+ * @return void
+ */
+PeerHandshaking.prototype.onMessage = function(msg) {
+    try {
+        let data = JSON.parse(msg.toString('utf8'));
 
-                case 'offer_pair':
-                    return self._offerPair.call(this, data);
-                break;
+        switch(data.req) {
+            case 'request_pairs':
+                return this._requestPairs.call(this, data);
+            break;
 
-                case 'answer_pair':
-                    return self._answerPair.call(this, data);
-                break;
+            case 'offer_pair':
+                return this._offerPair.call(this, data);
+            break;
 
-                case 'candidate_pair':
-                    return self._candidatePair.call(this, data);
-                break;
-            }
-        } catch (e) {
-            console.log(e);
+            case 'answer_pair':
+                return this._answerPair.call(this, data);
+            break;
+
+            case 'candidate_pair':
+                return this._candidatePair.call(this, data);
+            break;
         }
-    };
+    } catch (e) {
+        console.log(e);
+    }
+};
 
-    /**
-     * Whenever there's an error in a communication to the socket, it terminates
-     *
-     * @param   Object      error               Error Object
-     *
-     * @return void
-     */
-    this.onError = function(error) {
-        console.log(error);
+/**
+ * Whenever there's an error in a communication to the socket, it terminates
+ *
+ * @param   Object      error               Error Object
+ *
+ * @return void
+ */
+PeerHandshaking.prototype.onError = function(error) {
+    console.log(error);
 
-        this.terminate();
-    };
+    this.terminate();
+};
 
-    /**
-     * Requests pairs for a given file
-     *
-     * @param   object      data        Request data
-     *
-     * @return void
-     */
-    this._requestPairs = function(data) {
-        // If the request doesn't specify a filePath, we return immediately
-        if(!data.filePath)
-            return;
+/**
+ * Requests pairs for a given file
+ *
+ * @param   object      data        Request data
+ *
+ * @return void
+ */
+PeerHandshaking.prototype._requestPairs = function(data) {
+    // If the request doesn't specify a filePath, we return immediately
+    if(!data.filePath)
+        return;
 
-        let _filePath = PathParser.parse(data.filePath);
+    let _filePath = PathParser.parse(data.filePath);
 
-        // Joins the swarm for the given file
-        this.ConnectionPool.join(_filePath, this);
+    // Joins the swarm for the given file
+    this.ConnectionPool.join(_filePath, this);
 
-        // Sends a message to the user with the current swarm size for the specified file
-        this.send({
-            'req': 'request_pairs',
-            'swarm': _filePath,
-            'size': this.ConnectionPool.getSwarmSize(this._domain, _filePath)
-        });
+    // Sends a message to the user with the current swarm size for the specified file
+    this.send({
+        'req': 'request_pairs',
+        'swarm': _filePath,
+        'size': this.ConnectionPool.getSwarmSize(this._domain, _filePath)
+    });
 
-        // Then we broadcast to everyone inside the swarm that we are available to pairing
-        this.broadcast({
-            'from': this.id,
-            'req': 'pair_found'
-        }, _filePath);
-    };
+    // Then we broadcast to everyone inside the swarm that we are available to pairing
+    this.broadcast({
+        'from': this.id,
+        'req': 'pair_found'
+    }, _filePath);
+};
 
-    /**
-     * Offers a pair to a single peer
-     *
-     * @param   Object      data            Offer data
-     *
-     * @return void
-     */
-    this._offerPair = function(data) {
-        var User = this.ConnectionPool.get(data.to);
+/**
+ * Offers a pair to a single peer
+ *
+ * @param   Object      data            Offer data
+ *
+ * @return void
+ */
+PeerHandshaking.prototype._offerPair = function(data) {
+    var User = this.ConnectionPool.get(data.to);
 
-        if(!User) {
-            return false;
-        }
+    if(!User) {
+        return false;
+    }
 
-        User.send({
-            'from': this.id,
-            'req': 'pair_offer',
-            'sdp': data.sdp
-        });
-    };
+    User.send({
+        'from': this.id,
+        'req': 'pair_offer',
+        'sdp': data.sdp
+    });
+};
 
-    /**
-     * Answers a pair
-     *
-     * @param   Object      data            Answer data
-     *
-     * @return void
-     */
-    this._answerPair = function(data) {
-        var User = this.ConnectionPool.get(data.to);
+/**
+ * Answers a pair
+ *
+ * @param   Object      data            Answer data
+ *
+ * @return void
+ */
+PeerHandshaking.prototype._answerPair = function(data) {
+    var User = this.ConnectionPool.get(data.to);
 
-        if(!User) {
-            return false;
-        }
+    if(!User) {
+        return false;
+    }
 
-        User.send({
-            'from': this.id,
-            'req': 'pair_answer',
-            'sdp': data.sdp
-        });
-    };
+    User.send({
+        'from': this.id,
+        'req': 'pair_answer',
+        'sdp': data.sdp
+    });
+};
 
-    this._candidatePair = function(data) {
-        var User = this.ConnectionPool.get(data.to);
+/**
+ * Sends a ICE Candidate info to the respective peer
+ *
+ * @param   Object      data        ICE Candidate info
+ *
+ * @return void
+ */
+PeerHandshaking.prototype._candidatePair = function(data) {
+    var User = this.ConnectionPool.get(data.to);
 
-        if(!User) {
-            return false;
-        }
+    if(!User) {
+        return false;
+    }
 
-        User.send({
-            'from': this.id,
-            'req': 'pair_candidate',
-            'candidate': data.candidate
-        });
-    };
+    User.send({
+        'from': this.id,
+        'req': 'pair_candidate',
+        'candidate': data.candidate
+    });
 };
 
 module.exports = PeerHandshaking;

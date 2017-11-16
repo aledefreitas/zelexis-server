@@ -72,7 +72,7 @@ SwarmPool.prototype.join = function(swarm, user) {
  *
  * @return boolean
  */
-SwarmPoo.prototype.leave = function(swarm, user_id) {
+SwarmPool.prototype.leave = function(swarm, user_id) {
     let swarmSet = this._swarms.get(swarm);
 
     if(swarmSet && swarmSet.leave(user_id)) {
@@ -91,7 +91,7 @@ SwarmPoo.prototype.leave = function(swarm, user_id) {
  *
  * @return int
  */
-SwarmPoo.prototype._getSize = function() {
+SwarmPool.prototype._getSize = function() {
     return this._swarms.size;
 }
 

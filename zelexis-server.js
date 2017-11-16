@@ -23,13 +23,6 @@
      /**
       * Constant with HTTPS certificate credentials
       *
-      * Reads from Process Line Arguments to determine the path to both the key and certificate files, respectively in order
-      * And a third argument for a passphrase if there is one
-      *
-      * Example: node zlx-p2p-cdn-server.js PATH/TO/KEY/FILE PATH/TO/CERT/FILE PASSPHRASE
-      *
-      * $1 argument receives the key, $2 argument receives the cert, $3 argument receives the passphrase
-      *
       * @const Object
       */
      const HTTPS_credentials = require('./ssl-credentials.js');

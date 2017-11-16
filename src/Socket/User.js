@@ -24,6 +24,8 @@ var uuidv4 = require("uuid/v4");
  * @return  string                                  Returns this user's id
  */
 var User = function User(socket, pool) {
+    var self = this;
+
     /**
      * Heartbeat interval delay, in milliseconds
      * Pings the socket in this interval to check for open connections
@@ -86,16 +88,21 @@ var User = function User(socket, pool) {
 
     this.Socket = socket;
     this.ConnectionPool = pool;
-    this.PeerHandshaking = new PeerHandshaking();
-
     this._domain = socket._accessKey;
-
-    // Binds this object so we can access its methods from within the PeerHandshaking, which is created mostly for better organization and semantics
-    this.Socket.on("message", this.PeerHandshaking.onMessage.bind(this)); // TODO: Transformar em um dispatcher de eventos
-    this.Socket.on("error", this.PeerHandshaking.onError.bind(this)); // TODO: Transformar em um dispatcher de eventos
 
     // Adds the user to active connections within the server
     this.ConnectionPool.add(this);
+
+    this.PeerHandshaking = new PeerHandshaking(this.id, this.ConnectionPool);
+
+    // Binds this object so we can access its methods from within the PeerHandshaking, which is created mostly for better organization and semantics
+    // TODO: Transformar em um dispatcher de eventos
+    this.Socket.on("message", function(message) {
+        return self.PeerHandshaking.onMessage(message);
+    });
+    this.Socket.on("error", function(error) {
+        return self.PeerHandshaking.onError(error);
+    });
 
     // Sends the identity to the peer
     this.send({

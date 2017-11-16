@@ -16,10 +16,13 @@ var PathParser = require("../Helper/PathParser.js");
 /**
  * PeerHandshaking constructor
  *
+ * @param   string                      user_id             User's id
+ * @param   Tracker\ConnectionPool      ConnectionPool      ConnectionPool instance
+ *
  * @return void
  */
-var PeerHandshaking = function PeerHandshaking() {
-
+var PeerHandshaking = function PeerHandshaking(user_id, ConnectionPool) {
+    this.User = ConnectionPool.get(user_id);
 };
 
 /**
@@ -83,18 +86,18 @@ PeerHandshaking.prototype._requestPairs = function(data) {
     let _filePath = PathParser.parse(data.filePath);
 
     // Joins the swarm for the given file
-    this.ConnectionPool.join(_filePath, this);
+    this.User.ConnectionPool.join(_filePath, this);
 
     // Sends a message to the user with the current swarm size for the specified file
-    this.send({
+    this.User.send({
         'req': 'request_pairs',
         'swarm': _filePath,
-        'size': this.ConnectionPool.getSwarmSize(this._domain, _filePath)
+        'size': this.User.ConnectionPool.getSwarmSize(this._domain, _filePath)
     });
 
     // Then we broadcast to everyone inside the swarm that we are available to pairing
-    this.broadcast({
-        'from': this.id,
+    this.User.broadcast({
+        'from': this.User.id,
         'req': 'pair_found'
     }, _filePath);
 };
@@ -107,14 +110,14 @@ PeerHandshaking.prototype._requestPairs = function(data) {
  * @return void
  */
 PeerHandshaking.prototype._offerPair = function(data) {
-    var User = this.ConnectionPool.get(data.to);
+    var User = this.User.ConnectionPool.get(data.to);
 
     if(!User) {
         return false;
     }
 
     User.send({
-        'from': this.id,
+        'from': this.User.id,
         'req': 'pair_offer',
         'sdp': data.sdp
     });
@@ -128,14 +131,14 @@ PeerHandshaking.prototype._offerPair = function(data) {
  * @return void
  */
 PeerHandshaking.prototype._answerPair = function(data) {
-    var User = this.ConnectionPool.get(data.to);
+    var User = this.User.ConnectionPool.get(data.to);
 
     if(!User) {
         return false;
     }
 
     User.send({
-        'from': this.id,
+        'from': this.User.id,
         'req': 'pair_answer',
         'sdp': data.sdp
     });
@@ -149,14 +152,14 @@ PeerHandshaking.prototype._answerPair = function(data) {
  * @return void
  */
 PeerHandshaking.prototype._candidatePair = function(data) {
-    var User = this.ConnectionPool.get(data.to);
+    var User = this.User.ConnectionPool.get(data.to);
 
     if(!User) {
         return false;
     }
 
     User.send({
-        'from': this.id,
+        'from': this.User.id,
         'req': 'pair_candidate',
         'candidate': data.candidate
     });

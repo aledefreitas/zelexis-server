@@ -33,7 +33,6 @@ var Authentication = function Authentication(handshake, accept) {
 
         return accept(true);
     } catch(e) {
-        console.log(e);
         return accept(false, 401, e.message);
     }
 };

@@ -36,21 +36,28 @@ PeerHandshaking.prototype.onMessage = function(msg) {
     try {
         let data = JSON.parse(msg.toString('utf8'));
 
+        var reqs = {
+            'JOIN_SWARM': 1,
+            'LOCAL_PEER_OFFER': 2,
+            'LOCAL_PEER_ANSWER': 3,
+            'LOCAL_ICE_CANDIDATE': 4
+        };
+
         switch(data.req) {
-            case 'request_pairs':
-                return this._requestPairs.call(this, data);
+            case reqs.JOIN_SWARM:
+                return this._requestPairs.call(this, data.data);
             break;
 
-            case 'offer_pair':
-                return this._offerPair.call(this, data);
+            case reqs.LOCAL_PEER_OFFER:
+                return this._offerPair.call(this, data.data);
             break;
 
-            case 'answer_pair':
-                return this._answerPair.call(this, data);
+            case reqs.LOCAL_PEER_ANSWER:
+                return this._answerPair.call(this, data.data);
             break;
 
-            case 'candidate_pair':
-                return this._candidatePair.call(this, data);
+            case reqs.LOCAL_ICE_CANDIDATE:
+                return this._candidatePair.call(this, data.data);
             break;
         }
     } catch (e) {
@@ -86,7 +93,7 @@ PeerHandshaking.prototype._requestPairs = function(data) {
     let _filePath = PathParser.parse(data.filePath);
 
     // Joins the swarm for the given file
-    this.User.ConnectionPool.join(_filePath, this);
+    this.User.ConnectionPool.join(_filePath, this.User);
 
     // Sends a message to the user with the current swarm size for the specified file
     this.User.send({

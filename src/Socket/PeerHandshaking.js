@@ -75,7 +75,7 @@ PeerHandshaking.prototype.onMessage = function(msg) {
 PeerHandshaking.prototype.onError = function(error) {
     console.log(error);
 
-    this.terminate();
+    this.User.terminate();
 };
 
 /**

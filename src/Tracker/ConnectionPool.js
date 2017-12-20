@@ -161,4 +161,4 @@ ConnectionPool.prototype.get = function(user_id) {
     return this._connections[user_id];
 };
 
-module.exports = ConnectionPool;
+module.exports = new ConnectionPool();

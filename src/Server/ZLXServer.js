@@ -47,14 +47,6 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
         "verifyClient": Authentication
     });
 
-    /**
-     * Instance of ConnectionPool
-     * Array Pool of connections to this server
-     *
-     * @var Helper\ConnectionPool
-     */
-    this.ConnectionPool = new ConnectionPool();
-
 
     console.log("[ZELEXIS CDN Server]");
     console.log("Server open and listening on port " + PORT);
@@ -63,11 +55,13 @@ let ZLXServer = function(HTTPS_credentials, PORT) {
         // Filters the accessToken from the connection requested URL
         socket._accessKey = upgradeReq.headers['sec-websocket-protocol'];
 
-        var user_id = self.ConnectionPool.add(new UserSocket(socket, self.ConnectionPool));
+        let User = new UserSocket(socket);
+
+        var user_id = User.id;
 
         // Handle a connection termination and free the memory
         socket.on("close", function() {
-            let User = self.ConnectionPool.get(user_id);
+            let User = ConnectionPool.get(user_id);
 
             if(User) {
                 User.handleTermination();

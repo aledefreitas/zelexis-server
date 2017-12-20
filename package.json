@@ -1,0 +1,28 @@
+{
+  "name": "zlx-p2p-cdn-server",
+  "version": "0.0.1",
+  "description": "Peer To Peer CDN relaying on WebRTC technology to deliver files from user to user, with fallback to online servers",
+  "main": "zlx-p2p-cdn-server.js",
+  "dependencies": {
+    "events": "^1.1.1",
+    "fs": "^0.0.1-security",
+    "inherits": "^2.0.3",
+    "safe-buffer": "^5.1.1",
+    "uuid": "^3.1.0",
+    "ws": "^3.1.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aledefreitas/zlx-p2p-cdn-server.git"
+  },
+  "author": "Alexandre de Freitas Caetano <https://github.com/aledefreitas>",
+  "license": "SEE LICENSE IN LICENSE.MD",
+  "bugs": {
+    "url": "https://github.com/aledefreitas/zlx-p2p-cdn-server/issues"
+  },
+  "homepage": "https://github.com/aledefreitas/zlx-p2p-cdn-server#readme"
+}

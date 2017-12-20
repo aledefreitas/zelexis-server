@@ -11,165 +11,155 @@
  * @since       0.0.1
  */
 
+var ConnectionPool = require("../Tracker/ConnectionPool.js");
 var PathParser = require("../Helper/PathParser.js");
 
 /**
  * PeerHandshaking constructor
  *
- * @param   string                      user_id             User's id
- * @param   Tracker\ConnectionPool      ConnectionPool      ConnectionPool instance
+ * @param   {string}                      user_id             User's id
  *
- * @return void
+ * @return {void}
  */
-var PeerHandshaking = function PeerHandshaking(user_id, ConnectionPool) {
+var PeerHandshaking = function PeerHandshaking(user_id, WSMProtocol) {
     this.User = ConnectionPool.get(user_id);
+
+    this.WSMProtocol = this.User.WSMProtocol;
+
+    // Sends the identity to the user
+    this.User.send(this.WSMProtocol.write(
+        this.WSMProtocol.OUTGOING.IDENTITY,
+        user_id
+    ));
+
+    this.WSMProtocol.on('join_swarm', joinSwarm.bind(this));
+    this.WSMProtocol.on('local_peer_offer', localPeerOffer.bind(this));
+    this.WSMProtocol.on('local_peer_answer', localPeerAnswer.bind(this));
+    this.WSMProtocol.on('local_ice_candidate', localIceCandidate.bind(this));
 };
 
 /**
- * Handles a new message from the Socket Connection, and routes it to the correspondent function
+ * Requests to join a specific swarm
  *
- * @context Socket\User
+ * @param   {object}      data        Request data
  *
- * @return void
+ * @return {void}
  */
-PeerHandshaking.prototype.onMessage = function(msg) {
-    try {
-        let data = JSON.parse(msg.toString('utf8'));
-
-        var reqs = {
-            'JOIN_SWARM': 1,
-            'LOCAL_PEER_OFFER': 2,
-            'LOCAL_PEER_ANSWER': 3,
-            'LOCAL_ICE_CANDIDATE': 4
-        };
-
-        switch(data.req) {
-            case reqs.JOIN_SWARM:
-                return this._requestPairs.call(this, data.data);
-            break;
-
-            case reqs.LOCAL_PEER_OFFER:
-                return this._offerPair.call(this, data.data);
-            break;
-
-            case reqs.LOCAL_PEER_ANSWER:
-                return this._answerPair.call(this, data.data);
-            break;
-
-            case reqs.LOCAL_ICE_CANDIDATE:
-                return this._candidatePair.call(this, data.data);
-            break;
-        }
-    } catch (e) {
-        console.log(e);
-    }
-};
-
-/**
- * Whenever there's an error in a communication to the socket, it terminates
- *
- * @param   Object      error               Error Object
- *
- * @return void
- */
-PeerHandshaking.prototype.onError = function(error) {
-    console.log(error);
-
-    this.User.terminate();
-};
-
-/**
- * Requests pairs for a given file
- *
- * @param   object      data        Request data
- *
- * @return void
- */
-PeerHandshaking.prototype._requestPairs = function(data) {
+function joinSwarm(data) {
     // If the request doesn't specify a filePath, we return immediately
     if(!data.filePath)
         return;
 
-    let _filePath = PathParser.parse(data.filePath);
+    let swarm_id = PathParser.parse(data.filePath);
 
     // Joins the swarm for the given file
-    this.User.ConnectionPool.join(_filePath, this.User);
+    ConnectionPool.join(swarm_id, this.User);
 
-    // Sends a message to the user with the current swarm size for the specified file
-    this.User.send({
-        'req': 'request_pairs',
-        'swarm': _filePath,
-        'size': this.User.ConnectionPool.getSwarmSize(this._domain, _filePath)
-    });
+    // We send the data about the swarm to the User
+    this.User.send(this.WSMProtocol.write(
+        this.WSMProtocol.OUTGOING.SWARM_DATA,
+        {
+            'filePath': data.filePath,
+            'swarm_id': swarm_id,
+            'size': ConnectionPool.getSwarmSize(this.User._domain, swarm_id)
+        }
+    ));
 
     // Then we broadcast to everyone inside the swarm that we are available to pairing
-    this.User.broadcast({
-        'from': this.User.id,
-        'req': 'pair_found'
-    }, _filePath);
+    this.User.broadcast(this.WSMProtocol.write(
+        this.WSMProtocol.OUTGOING.REMOTE_PEER,
+        {
+            'from': this.User.id,
+            'swarm_id': swarm_id
+        }
+    ), swarm_id);
 };
 
 /**
  * Offers a pair to a single peer
  *
- * @param   Object      data            Offer data
+ * @param   {object}      data            Offer data
  *
- * @return void
+ * @return {void}
  */
-PeerHandshaking.prototype._offerPair = function(data) {
-    var User = this.User.ConnectionPool.get(data.to);
+function localPeerOffer(data) {
+    // If the remote peer is not specified, just return
+    if(!data.to)
+        return;
 
-    if(!User) {
-        return false;
-    }
+    let User = ConnectionPool.get(data.to);
 
-    User.send({
-        'from': this.User.id,
-        'req': 'pair_offer',
-        'sdp': data.sdp
-    });
+    // If the user is not connected to the server, return
+    if(!User)
+        return;
+
+    // Send the remote peer data about the user
+    User.send(this.WSMProtocol.write(
+        this.WSMProtocol.OUTGOING.REMOTE_PEER_OFFER,
+        {
+            'from': this.User.id,
+            'swarm_id': data.swarm_id,
+            'sdp': data.sdp
+        }
+    ));
 };
 
 /**
- * Answers a pair
+* Answers a pair
  *
- * @param   Object      data            Answer data
+ * @param   {object}      data            Offer data
  *
- * @return void
+ * @return {void}
  */
-PeerHandshaking.prototype._answerPair = function(data) {
-    var User = this.User.ConnectionPool.get(data.to);
+function localPeerAnswer(data) {
+    // If the remote peer is not specified, just return
+    if(!data.to)
+        return;
 
-    if(!User) {
-        return false;
-    }
+    let User = ConnectionPool.get(data.to);
 
-    User.send({
-        'from': this.User.id,
-        'req': 'pair_answer',
-        'sdp': data.sdp
-    });
+    // If the user is not connected to the server, return
+    if(!User)
+        return;
+
+    // Send the remote peer data about the user
+    User.send(this.WSMProtocol.write(
+        this.WSMProtocol.OUTGOING.REMOTE_PEER_ANSWER,
+        {
+            'from': this.User.id,
+            'swarm_id': data.swarm_id,
+            'sdp': data.sdp
+        }
+    ));
 };
 
 /**
- * Sends a ICE Candidate info to the respective peer
+ * Sends the information about the ICE Candidate to the respective peer
  *
- * @param   Object      data        ICE Candidate info
+ * @param   {object}    data        ICE Candidate info
  *
- * @return void
+ * @return {void}
  */
-PeerHandshaking.prototype._candidatePair = function(data) {
-    var User = this.User.ConnectionPool.get(data.to);
+function localIceCandidate(data) {
+    // If the remote peer is not specified, just return
+    if(!data.to)
+        return;
 
-    if(!User) {
-        return false;
-    }
+    let User = ConnectionPool.get(data.to);
 
-    User.send({
-        'from': this.User.id,
-        'req': 'pair_candidate',
-        'candidate': data.candidate
-    });
+    // If the user is not connected to the server, return
+    if(!User)
+        return;
+
+    // Send the remote peer data about the user
+    User.send(this.WSMProtocol.write(
+        this.WSMProtocol.OUTGOING.ICE_CANDIDATE,
+        {
+            'from': this.User.id,
+            'swarm_id': data.swarm_id,
+            'sdp': data.candidate
+        }
+    ));
 };
 
 module.exports = PeerHandshaking;
